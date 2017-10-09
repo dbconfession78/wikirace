@@ -19,20 +19,27 @@ def main():
     start = args[1];
     target = args[2];
     searched_links = [];
-    links = page(start).links;
-    mt = Thread(target=start_search, args=(links, ));
+    try:
+        links = page(start).links;
+    except:
+        print('ERROR: unable to get links')
+        exit(1)
+    run_thread = Thread(target=run, args=(links, ));
     path_nodes = {}
 
     print_heading(start, target, 50)
-    mt.start();
+    run_thread.start();
     while did_find == False:
         time.sleep(0)
 
-#    print('OPEN THREADS: {}'.format(threading.enumerate()))
-    path = build_path()
+    path = build_path(target, path_nodes)
     print_path(path)
+    print('\nCleaning up...')
+    time.sleep(5)
+    print('Exiting...')
+    exit(0)
 
-def start_search(links):
+def run(links):
     t = Thread(target=search, args=(start, links, target))
     t.start();
     t.join();
@@ -44,7 +51,7 @@ def search(node, links, target, parent=None):
         return;
     if node not in searched_links and did_find == False:
         searched_links.append(node);
-        page_title('=', parent, node, len(node))
+        print_page_title('=', parent, node, len(node))
         path_nodes[node] = parent
         if did_find:
             return
@@ -52,7 +59,6 @@ def search(node, links, target, parent=None):
             did_find = True;
             alert_found(target)
             path_nodes[target] = parent
-            print(path_nodes)
             return;
         else:
             for link in links:
@@ -62,33 +68,14 @@ def search(node, links, target, parent=None):
                     _links = page(link).links
                 except wikipedia.exceptions.DisambiguationError as e:
                     continue
-                time.sleep(1)
+                except ConnectionError as e:
+                    time.sleep(2)
+                    _links = page(links).links
+                time.sleep(0.8)
                 t = Thread(target=search, args=(link, _links, target, node));
                 if did_find:
                     return;
                 t.start()
-                # TODO: add listener here to join or exit this thread when did_find == true
-
-def print_path(path):
-    string = ''
-    for (i, link) in enumerate(path):
-        string += link
-        if i < len(path)-1:
-            string += ' --> '
-
-    print(string)
-
-def build_path():
-    rev_path = []
-    node = target
-    while node is not None:
-        rev_path.append(node)
-        parent = path_nodes[node]
-        node = parent
-    path = []
-    for i in range(len(rev_path)):
-        path.append(rev_path[-1-i])
-    return path;
     
 if __name__ == '__main__':
     main();
